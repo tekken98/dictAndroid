@@ -1,0 +1,10 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto"
+      xmlns:tools="http://schemas.android.com/tools"
+      tools:context="com.tekken.Dict.MainActivity">
+    <item android:id="@+id/action_xiangya"
+          android:title="@string/action_xiangya"
+          android:orderInCategory="100"
+          app:showAsAction="never"/>
+    <item android:title="@string/action_longman" android:id="@+id/action_longman"/>
+</menu>

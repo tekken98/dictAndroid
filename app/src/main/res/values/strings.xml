@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">dict</string>
+    <string name="action_xiangya">xiangya</string>
+    <string name="action_longman">longman</string>
+</resources>
