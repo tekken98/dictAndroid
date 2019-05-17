@@ -12,7 +12,7 @@ internal class Dict(filename: String) {
     var d_isIndex: FileInputStream? = null
     var d_isDict: FileInputStream? = null
     var d_isCache: FileInputStream? = null
-    var d_Success: Boolean = false;
+    var d_Success: Boolean = false
 
     var d_offsetArray: IntArray? = null // store evevy index word offset
     var d_count: Int = 0  // current indexFile word index
@@ -32,6 +32,9 @@ internal class Dict(filename: String) {
 
     var d_explainOffset: Int = 0
     var d_explainSize: Int = 0
+    var d_explainHashArray:HashMap<String,Cache> = HashMap<String,Cache>()
+    var  d_explainCache:Cache? = null
+
     val BUFFSIZE = 40960
     val CACHESIZE = 128
     var d_dictFileName: String? = null
@@ -44,7 +47,7 @@ internal class Dict(filename: String) {
         var d_flag: Int = 0
         var d_offset: Int = 0
         var d_count: Int = 0
-    }
+     }
 
     internal inner class IntBuff {
         var byte: Int = 0
@@ -79,7 +82,7 @@ internal class Dict(filename: String) {
     }
 
     fun isSuccess(): Boolean {
-        return d_Success;
+        return d_Success
     }
 
     fun init(): Boolean {
@@ -97,6 +100,12 @@ internal class Dict(filename: String) {
             d_buffEnd = BUFFSIZE
             if (d_buff == null)
                 d_buff = ByteArray(BUFFSIZE)
+            if (d_explainCache == null) {
+                d_explainCache = Cache()
+                d_explainCache!!.d_offset = 0
+                d_explainCache!!.d_count = 0
+                d_explainCache!!.d_flag = 0
+            }
             d_ip = 0
             d_over = false
             d_count = 0
@@ -148,7 +157,7 @@ internal class Dict(filename: String) {
         if (d_ip >= d_buffEnd && d_over == true) {
             return false
         }
-        var i: Int;
+        var i: Int
         do {
 
             i = d_ip
@@ -213,11 +222,11 @@ internal class Dict(filename: String) {
             second = 0x0.toChar()
         }
         try {
-            var i = first.toInt();
-            var j = second.toInt();
-            msg("skip i: " + i + " " + i.toChar() + " j:" + " " + j + " " +j.toChar());
+            val i = first.toInt()
+            val j = second.toInt()
+            msg("skip i: " + i + " " + i.toChar() + " j:" + " " + j + " " +j.toChar())
             if (d_indexCache[i][j]!!.d_flag == 1) {
-                msg(" in [i][j] == 1 " +  first.toString() + ":" + second.toString() + " " + d_indexCache[i][j]!!.d_offset.toInt())
+                msg(" in [i][j] == 1 " +  first.toString() + ":" + second.toString() + " " + d_indexCache[i][j]!!.d_offset)
                 d_isIndex!!.skip(d_indexCache[i][j]!!.d_offset.toLong())
                 d_count = d_indexCache[i][j]!!.d_count
             } else {
@@ -235,15 +244,15 @@ internal class Dict(filename: String) {
     fun min(a: Int, b: Int): Int {
         return if (a > b) b else a
     }
-
-    fun findWord(w: String): String? {
-        if (w.length == 0) return ""
+    fun findWord2(w:String):String
+    {
+        var tempOffset  = 0
+        var tempSize  = 0
         init()
         skipCache(w)
         val len = w.length
         var max = 0
-        var tempOffset = 0
-        var tempSize = 0
+        var tempWord =""
         val W = w.toUpperCase()
         while (nextIndex()) {
             var i: Int
@@ -261,6 +270,7 @@ internal class Dict(filename: String) {
                 if (max < i) {
                     tempOffset = d_explainOffset
                     tempSize = d_explainSize
+                    tempWord = currentWord!!
                     max = i
                     if (max == len)
                         break
@@ -268,7 +278,45 @@ internal class Dict(filename: String) {
             } else
                 break
         }
-        var a: String = "tempOffset is " + tempOffset.toString() + " tempSize is " + tempSize.toString()
+        if (tempOffset == d_explainCache!!.d_offset)
+            return "SAME"
+        else {
+            currentWord = tempWord
+            d_explainCache!!.d_offset = tempOffset
+            d_explainCache!!.d_count = tempSize
+        }
+        return "CONT"
+    }
+    fun flushCurrentCache(){
+        d_explainCache!!.d_offset = 0
+    }
+    fun findWord(w: String): String? {
+        if (w.length == 0) return ""
+        val tempOffset:Int
+        val tempSize:Int
+
+        if (w.length > 2 && d_explainHashArray.containsKey(w)){
+            val ca =d_explainHashArray.get(w)
+            Log.d("debug","find HashMap :" + w )
+            tempOffset = ca!!.d_offset
+            tempSize = ca.d_count
+            currentWord = w
+            if (tempOffset == d_explainCache!!.d_offset) {
+                return "SAME"
+            }
+        }else {
+            val tmp = findWord2(w)
+            tempOffset = d_explainCache!!.d_offset
+            tempSize = d_explainCache!!.d_count
+            val cache = Cache()
+            cache.d_offset = tempOffset
+            cache.d_count = tempSize
+            if (w.length > 2 && !d_explainHashArray.containsKey(w))
+                d_explainHashArray.set(w,cache)
+            if (tmp.equals("SAME"))
+                return "SAME"
+        }
+        val a: String = "tempOffset is " + tempOffset.toString() + " tempSize is " + tempSize.toString()
         Log.d("debug", a)
         return getWord(tempOffset, tempSize)
     }
@@ -359,7 +407,7 @@ internal class Dict(filename: String) {
                 d_offsetArray!![i] = toInt(buff, i * 4)
                 i++
             }
-            d_Success = true;
+            d_Success = true
             readIndexBuff(BUFFSIZE)
     }
 
@@ -390,8 +438,8 @@ internal class Dict(filename: String) {
                 first = w[0]
                 second = 0x0.toChar()
             }
-            var i = first.toInt();
-            var j = second.toInt();
+            val i = first.toInt()
+            val j = second.toInt()
             if (i >= 0 && i < 128 && j >= 0 && j < 128) {
                 if (d_indexCache[i][j]!!.d_flag == 0) {
                     d_indexCache[i][j]!!.d_flag = 1
@@ -451,7 +499,7 @@ internal class Dict(filename: String) {
             os.write(ib.buff, 0, ib.byte)
             os.flush()
             os.close()
-            d_Success = true;
+            d_Success = true
             msg("Make Cache finishied!")
 
         } catch (e: Exception) {
