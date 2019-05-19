@@ -6,4 +6,5 @@
     <string name="explain">explain</string>
     <string name="pre">pre</string>
     <string name="next">next</string>
+    <string name="wifiview">wifiview</string>
 </resources>

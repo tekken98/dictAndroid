@@ -19,7 +19,7 @@ internal class Dict(filename: String) {
 
     lateinit var d_indexCache: Array<Array<Cache?>> // [i][j]
 
-    var currentWord: String? = null // current word;
+    var currentWord: String? = null // current word
     var d_ip: Int = 0  // current word index
     var d_over: Boolean = false  // indexfile end flag
     var d_buff: ByteArray? = null  // indexFile buff
@@ -32,37 +32,33 @@ internal class Dict(filename: String) {
 
     var d_explainOffset: Int = 0
     var d_explainSize: Int = 0
-    var d_explainHashArray:HashMap<String,Cache> = HashMap<String,Cache>()
-    var  d_explainCache:Cache? = null
+    var d_explainHashArray: HashMap<String, Cache> = HashMap<String, Cache>()
+    var d_explainCache: Cache? = null
 
     val BUFFSIZE = 40960
     val CACHESIZE = 128
     var d_dictFileName: String? = null
 
-     fun getCurWord(): String? {
-         return currentWord
-     }
+    fun getCurWord(): String? {
+        return currentWord
+    }
 
     internal inner class Cache {
         var d_flag: Int = 0
         var d_offset: Int = 0
         var d_count: Int = 0
-     }
+    }
 
     internal inner class IntBuff {
         var byte: Int = 0
         var buff: ByteArray? = null
 
-        constructor(size: Int) {
+        constructor (size: Int) {
             buff = null
             byte = 0
             buff = ByteArray(size)
         }
 
-        constructor() {
-            byte = 0
-            buff = null
-        }
 
         fun storeInt(i: Int) {
             if (buff != null) {
@@ -175,8 +171,6 @@ internal class Dict(filename: String) {
                 } else
                     return false
             } else {
-                //    if( d_ip == d_buffEnd)
-                //       return false;
                 val w = ByteArray(i - d_ip)
 
                 for (j in d_ip until i) {
@@ -210,7 +204,7 @@ internal class Dict(filename: String) {
         return true
     }
 
-    fun skipCache(w: String) {
+    fun skipCache(w: String): Boolean {
 
         val first: Char
         val second: Char
@@ -221,22 +215,25 @@ internal class Dict(filename: String) {
             first = w[0]
             second = 0x0.toChar()
         }
+
         try {
             val i = first.toInt()
             val j = second.toInt()
-            msg("skip i: " + i + " " + i.toChar() + " j:" + " " + j + " " +j.toChar())
+            msg("skip i: " + i + " " + i.toChar() + " j:" + " " + j + " " + j.toChar())
             if (d_indexCache[i][j]!!.d_flag == 1) {
-                msg(" in [i][j] == 1 " +  first.toString() + ":" + second.toString() + " " + d_indexCache[i][j]!!.d_offset)
+                msg(" in [i][j] " + first.toString() + ":" + second.toString() + " " + d_indexCache[i][j]!!.d_offset.toString())
                 d_isIndex!!.skip(d_indexCache[i][j]!!.d_offset.toLong())
                 d_count = d_indexCache[i][j]!!.d_count
-            } else {
+            } else if (d_indexCache[i][0]!!.d_flag == 1) {
                 d_isIndex!!.skip(d_indexCache[i][0]!!.d_offset.toLong())
                 d_count = d_indexCache[i][0]!!.d_count
+            } else {
+                return false
             }
             readIndexBuff(BUFFSIZE)
+            return true
         } catch (e: Exception) {
-            println("error")
-            println(e.toString())
+            return false
         }
 
     }
@@ -244,15 +241,16 @@ internal class Dict(filename: String) {
     fun min(a: Int, b: Int): Int {
         return if (a > b) b else a
     }
-    fun findWord2(w:String):String
-    {
-        var tempOffset  = 0
-        var tempSize  = 0
+
+    fun findWord2(w: String): String {
+        var tempOffset = 0
+        var tempSize = 0
         init()
-        skipCache(w)
+        if (!skipCache(w))
+            return ""
         val len = w.length
         var max = 0
-        var tempWord =""
+        var tempWord = ""
         val W = w.toUpperCase()
         while (nextIndex()) {
             var i: Int
@@ -287,24 +285,26 @@ internal class Dict(filename: String) {
         }
         return "CONT"
     }
-    fun flushCurrentCache(){
+
+    fun flushCurrentCache() {
         d_explainCache!!.d_offset = 0
     }
+
     fun findWord(w: String): String? {
         if (w.length == 0) return ""
-        val tempOffset:Int
-        val tempSize:Int
+        val tempOffset: Int
+        val tempSize: Int
 
-        if (w.length > 2 && d_explainHashArray.containsKey(w)){
-            val ca =d_explainHashArray.get(w)
-            Log.d("debug","find HashMap :" + w )
+        if (w.length > 2 && d_explainHashArray.containsKey(w)) {
+            val ca = d_explainHashArray.get(w)
+            Log.d("debug", "find HashMap :" + w)
             tempOffset = ca!!.d_offset
             tempSize = ca.d_count
             currentWord = w
             if (tempOffset == d_explainCache!!.d_offset) {
                 return "SAME"
             }
-        }else {
+        } else {
             val tmp = findWord2(w)
             tempOffset = d_explainCache!!.d_offset
             tempSize = d_explainCache!!.d_count
@@ -312,7 +312,7 @@ internal class Dict(filename: String) {
             cache.d_offset = tempOffset
             cache.d_count = tempSize
             if (w.length > 2 && !d_explainHashArray.containsKey(w))
-                d_explainHashArray.set(w,cache)
+                d_explainHashArray.set(w, cache)
             if (tmp.equals("SAME"))
                 return "SAME"
         }
@@ -362,7 +362,7 @@ internal class Dict(filename: String) {
             }
         try {
             d_isCache = FileInputStream(d_dictFileName!! + ".cache")
-        }catch (e: Exception) {
+        } catch (e: Exception) {
             Log.d("debug", d_dictFileName + " has no cache ,try to make one!")
             makeCache()
         }
@@ -377,38 +377,37 @@ internal class Dict(filename: String) {
             }
         }
 
-            Log.d("debug", " open cache file" + d_dictFileName)
-            d_isCache!!.read(d_buff, 0, 4)
-            val w = toInt(d_buff!!, 0)
-            Log.d("debug", "cache size is " + w.toString())
-            var buff: ByteArray? = ByteArray(w * 16)
-            d_isCache!!.read(buff!!, 0, w * 16)
-            var k = 0
-            msg("Load Cache...")
-            while (k < w * 16) {
-                i = toInt(buff, k)
-                j = toInt(buff, k + 4)
-                d_indexCache[i][j]!!.d_flag = 1
-                d_indexCache[i][j]!!.d_offset = toInt(buff, k + 8)
-                d_indexCache[i][j]!!.d_count = toInt(buff, k + 12)
-                msg(i.toString() + " " + j .toString() + " "  )
-                k += 16
-            }
-            msg("finished!")
-            d_isCache!!.read(d_buff, 0, 4)
-            val size = toInt(d_buff!!, 0)
-            msg("Read Offset size is " + size.toString())
-            d_offsetArray = IntArray(size)
+        Log.d("debug", " open cache file" + d_dictFileName)
+        d_isCache!!.read(d_buff, 0, 4)
+        val w = toInt(d_buff!!, 0)
+        Log.d("debug", "cache size is " + w.toString())
+        var buff: ByteArray? = ByteArray(w * 16)
+        d_isCache!!.read(buff!!, 0, w * 16)
+        var k = 0
+        msg("Load Cache...")
+        while (k < w * 16) {
+            i = toInt(buff, k)
+            j = toInt(buff, k + 4)
+            d_indexCache[i][j]!!.d_flag = 1
+            d_indexCache[i][j]!!.d_offset = toInt(buff, k + 8)
+            d_indexCache[i][j]!!.d_count = toInt(buff, k + 12)
+            k += 16
+        }
+        msg("finished!")
+        d_isCache!!.read(d_buff, 0, 4)
+        val size = toInt(d_buff!!, 0)
+        msg("Read Offset size is " + size.toString())
+        d_offsetArray = IntArray(size)
 
-            buff = ByteArray(size * 4)
-            d_isCache!!.read(buff, 0, size * 4)
-            i = 0
-            while (i < size) {
-                d_offsetArray!![i] = toInt(buff, i * 4)
-                i++
-            }
-            d_Success = true
-            readIndexBuff(BUFFSIZE)
+        buff = ByteArray(size * 4)
+        d_isCache!!.read(buff, 0, size * 4)
+        i = 0
+        while (i < size) {
+            d_offsetArray!![i] = toInt(buff, i * 4)
+            i++
+        }
+        d_Success = true
+        readIndexBuff(BUFFSIZE)
     }
 
 
@@ -452,7 +451,6 @@ internal class Dict(filename: String) {
             count++
             //Log.d("debug",currentWord )
         }
-        //d_Success=true;
         Log.d("debug", d_Success.toString())
         d_offsetArray = IntArray(list.size)
         println(list.size)
@@ -463,7 +461,7 @@ internal class Dict(filename: String) {
         writeCache(cacheCount)
     }
 
-    fun writeCache(cacheCount: Int) {
+    private fun writeCache(cacheCount: Int) {
         val total: Int
         val ib: IntBuff
         val size = d_offsetArray!!.size

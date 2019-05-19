@@ -5,6 +5,14 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
+    signingConfigs {
+        release {
+            storeFile file('/home/bao/.android/tekken98.jks')
+            storePassword 'tekken98'
+            keyAlias = 'key0'
+            keyPassword 'tekken98'
+        }
+    }
     compileSdkVersion 28
     defaultConfig {
         applicationId "Tekken98.Dict"
@@ -18,6 +26,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
 }
